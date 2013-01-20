@@ -85,6 +85,7 @@ func main() {
 	// provided a proxy line
 	if *proxy != "" {
 		pieces := strings.Split(*proxy, ":")
+		dst := pieces[1] + ":" + pieces[2]
 
 		fin := &formatter{os.Stdout, 0, "<"}
 		fout := &formatter{os.Stdout, 0, ">"}
@@ -105,7 +106,6 @@ func main() {
 
 			go func(lconn net.Conn) {
 				tl := io.TeeReader(lconn, fout)
-				dst := pieces[1] + ":" + pieces[2]
 				rconn, err := net.Dial("tcp", dst)
 				if err != nil {
 					log.Fatal("error connectiong to", dst, ":", err)
