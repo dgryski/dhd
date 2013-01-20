@@ -108,7 +108,8 @@ func main() {
 				tl := io.TeeReader(lconn, fout)
 				rconn, err := net.Dial("tcp", dst)
 				if err != nil {
-					log.Fatal("error connectiong to", dst, ":", err)
+					log.Println("error connectiong to", dst, ":", err)
+					lconn.Close()
 					return
 				}
 				tr := io.TeeReader(rconn, fin)
