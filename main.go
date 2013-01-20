@@ -1,5 +1,10 @@
 package main
 
+/*
+TODO:
+    include timestatmp:addr when proxying (-verbose)
+*/
+
 import (
 	"flag"
 	"fmt"
