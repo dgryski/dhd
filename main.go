@@ -57,16 +57,16 @@ func (f *formatter) format(buf []byte) {
 
 		for i := 0; i < len(buf); i++ {
 			if i != 0 && ((i % 4) == 0) {
-				s += fmt.Sprintf(" ")
+				s += " "
 			}
 			s += fmt.Sprintf("%02x ", buf[i])
 		}
 
 		for i := len(buf); i < 16; i++ {
 			if i != 0 && ((i % 4) == 0) {
-				s += fmt.Sprintf(" ")
+				s += " "
 			}
-			s += fmt.Sprintf("   ")
+			s += "   "
 		}
 	}
 
@@ -77,7 +77,7 @@ func (f *formatter) format(buf []byte) {
 		return '.'
 	}, string(buf[:]))
 
-	s += fmt.Sprintf("   |%s|\n", string(buf2[:]))
+	s += "   |" + string(buf2[:]) + "|\n"
 	f.w.Write([]byte(s))
 }
 
