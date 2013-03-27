@@ -1,0 +1,13 @@
+
+
+The short version is:
+
+terminal1$ nc -l 10000 # listen on port 10000
+terminal2$ dhd -p 10001:localhost:10000   # proxy local port 10001 -> localhost:10000
+terminal3$ nc localhost 10001   # connect to local port 10001
+
+And now you'll get output like:
+2013/03/09 08:00:26 tcp server starting
+>00000000:  68 65 6c 6c  6f 2c 20 77  6f 72 6c 64  0a             |hello,.world.|
+<00000000:  68 65 6c 6c  6f 20 62 61  63 6b 0a                    |hello.back.|
+
