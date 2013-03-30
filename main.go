@@ -7,13 +7,11 @@ TODO:
 
 import (
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
 	"strings"
-	"unicode"
 )
 
 type formatter struct {
@@ -39,46 +37,91 @@ func (f *formatter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+var hex = []byte("0123456789abcdef")
+
 func (f *formatter) format(buf []byte) {
 
-	s := fmt.Sprintf("%s%08x:  ", f.prefix, f.offset)
+	// prefix addr:_(hex dump)+spaces+space+bar+chars+bar+newline
 
-	if len(buf) == 16 {
-		/* optimize for the most common case */
-		s += fmt.Sprintf("%02x %02x %02x %02x  "+
-			"%02x %02x %02x %02x  "+
-			"%02x %02x %02x %02x  "+
-			"%02x %02x %02x %02x ",
-			buf[0], buf[1], buf[2], buf[3],
-			buf[4], buf[5], buf[6], buf[7],
-			buf[8], buf[9], buf[10], buf[11],
-			buf[12], buf[13], buf[14], buf[15])
-	} else {
+	// our line is 83 characters of formatting
+	line := make([]byte, len(f.prefix)+83)
+	copy(line, []byte(f.prefix))
 
-		for i := 0; i < len(buf); i++ {
-			if i != 0 && ((i % 4) == 0) {
-				s += " "
-			}
-			s += fmt.Sprintf("%02x ", buf[i])
-		}
+	offs := f.offset
 
-		for i := len(buf); i < 16; i++ {
-			if i != 0 && ((i % 4) == 0) {
-				s += " "
-			}
-			s += "   "
-		}
+	ptr := len(f.prefix) + 8
+
+	line[ptr] = ':'
+	ptr--
+
+	for offs > 0 {
+		line[ptr] = hex[offs&0x0f]
+		ptr--
+		offs >>= 4
 	}
 
-	buf2 := strings.Map(func(r rune) rune {
-		if unicode.IsPrint(r) && !unicode.IsSpace(r) {
-			return r
-		}
-		return '.'
-	}, string(buf[:]))
+	for ptr >= len(f.prefix) {
+		line[ptr] = '0'
+		ptr--
+	}
 
-	s += "   |" + string(buf2[:]) + "|\n"
-	f.w.Write([]byte(s))
+	ptr = len(f.prefix) + 9
+	line[ptr] = ' '
+	ptr++
+
+	for i, b := range buf {
+		if i%4 == 0 {
+			line[ptr] = ' '
+			ptr++
+		}
+
+		line[ptr] = hex[b>>4]
+		ptr++
+		line[ptr] = hex[b&0x0f]
+		ptr++
+		line[ptr] = ' '
+		ptr++
+
+	}
+
+	// fill in rest of line
+	for i := len(buf); i < 16; i++ {
+		if i != 0 && ((i % 4) == 0) {
+			line[ptr] = ' '
+			ptr++
+		}
+
+		line[ptr] = ' '
+		ptr++
+		line[ptr] = ' '
+		ptr++
+		line[ptr] = ' '
+		ptr++
+	}
+
+	line[ptr] = ' '
+	ptr++
+	line[ptr] = ' '
+	ptr++
+	line[ptr] = '|'
+	ptr++
+
+	for _, v := range buf {
+		if v > 32 && v < 127 {
+			line[ptr] = v
+		} else {
+			line[ptr] = '.'
+		}
+		ptr++
+	}
+
+	line[ptr] = '|'
+	ptr++
+
+	line[ptr] = '\n'
+	ptr++
+
+	f.w.Write(line[:ptr])
 }
 
 func main() {
