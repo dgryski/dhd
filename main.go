@@ -135,8 +135,8 @@ func main() {
 		pieces := strings.Split(*proxy, ":")
 		dst := pieces[1] + ":" + pieces[2]
 
-		fin := &formatter{os.Stdout, 0, "<"}
-		fout := &formatter{os.Stdout, 0, ">"}
+		fin := &formatter{os.Stdout, 0, "<="}
+		fout := &formatter{os.Stdout, 0, "=>"}
 
 		ln, e := net.Listen("tcp", ":"+pieces[0])
 		if e != nil {
