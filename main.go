@@ -86,7 +86,7 @@ func (f *formatter) format(buf []byte) {
 
 	// fill in rest of line
 	for i := len(buf); i < 16; i++ {
-		if i != 0 && ((i % 4) == 0) {
+		if i%4 == 0 {
 			line[ptr] = ' '
 			ptr++
 		}
