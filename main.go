@@ -1,10 +1,5 @@
 package main
 
-/*
-TODO:
-    include timestatmp:addr when proxying (-verbose)
-*/
-
 import (
 	"flag"
 	"io"
@@ -12,12 +7,14 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 type formatter struct {
 	w      io.Writer
 	offset uint
 	prefix string
+	tstamp bool
 }
 
 func min(a, b int) int {
@@ -44,12 +41,30 @@ func (f *formatter) format(buf []byte) {
 	// prefix addr:_(hex dump)+spaces+space+bar+chars+bar+newline
 
 	// our line is 83 characters of formatting
-	line := make([]byte, len(f.prefix)+83)
-	copy(line, []byte(f.prefix))
+
+	plen := len(f.prefix)
+
+	if f.tstamp {
+		plen += len(time.Stamp)
+	}
+
+	llen := 83 + plen
+
+	ptr := 0
+
+	line := make([]byte, llen)
+	if f.tstamp {
+		s := time.Now().Format(time.Stamp)
+		copy(line, []byte(s))
+		ptr += len(time.Stamp)
+	}
+
+	copy(line[ptr:], []byte(f.prefix))
+	ptr += len(f.prefix)
 
 	offs := f.offset
 
-	ptr := len(f.prefix) + 8
+	ptr += 8
 
 	line[ptr] = ':'
 	ptr--
@@ -60,12 +75,12 @@ func (f *formatter) format(buf []byte) {
 		offs >>= 4
 	}
 
-	for ptr >= len(f.prefix) {
+	for ptr >= plen {
 		line[ptr] = '0'
 		ptr--
 	}
 
-	ptr = len(f.prefix) + 9
+	ptr = plen + 9
 	line[ptr] = ' '
 	ptr++
 
@@ -127,6 +142,7 @@ func (f *formatter) format(buf []byte) {
 func main() {
 
 	proxy := flag.String("p", "", "proxy line -- <lport>:<rhost>:<rport>")
+	tstamps := flag.Bool("t", false, "add time-stamps when proxying")
 
 	flag.Parse()
 
@@ -135,8 +151,16 @@ func main() {
 		pieces := strings.Split(*proxy, ":")
 		dst := pieces[1] + ":" + pieces[2]
 
-		fin := &formatter{os.Stdout, 0, "<="}
-		fout := &formatter{os.Stdout, 0, "=>"}
+		fprefix := "<= "
+		tprefix := "=> "
+
+		if *tstamps {
+			fprefix = " <= "
+			tprefix = " => "
+		}
+
+		fin := &formatter{os.Stdout, 0, fprefix, *tstamps}
+		fout := &formatter{os.Stdout, 0, tprefix, *tstamps}
 
 		ln, e := net.Listen("tcp", ":"+pieces[0])
 		if e != nil {
@@ -167,7 +191,11 @@ func main() {
 		}
 	}
 
-	fout := &formatter{os.Stdout, 0, ""}
+	if *tstamps {
+		log.Println("-t only applies when proxying, ignoring")
+	}
+
+	fout := &formatter{os.Stdout, 0, "", false}
 
 	var fin io.Reader
 
