@@ -26,9 +26,14 @@ func min(a, b int) int {
 }
 
 func (f *formatter) Write(p []byte) (int, error) {
+	var completedBytes int
 	for i := 0; i < len(p); i += 16 {
 		m := min(len(p), i+16)
-		f.format(p[i:m])
+		err := f.format(p[i:m])
+		if err != nil {
+			return completedBytes, err
+		}
+		completedBytes += m - i
 		f.offset += uint(m - i)
 	}
 	return len(p), nil
@@ -36,7 +41,7 @@ func (f *formatter) Write(p []byte) (int, error) {
 
 var hex = []byte("0123456789abcdef")
 
-func (f *formatter) format(buf []byte) {
+func (f *formatter) format(buf []byte) error {
 
 	// prefix addr:_(hex dump)+spaces+space+bar+chars+bar+newline
 
@@ -136,7 +141,19 @@ func (f *formatter) format(buf []byte) {
 	line[ptr] = '\n'
 	ptr++
 
-	f.w.Write(line[:ptr])
+	_, err := f.w.Write(line[:ptr])
+	return err
+}
+
+func copyStream(conn io.WriteCloser, r io.Reader) {
+	_, err := io.Copy(conn, r)
+	if err != nil {
+		log.Printf("error during copy: %v\n", err)
+	}
+	err = conn.Close()
+	if err != nil {
+		log.Printf("error during close: %v\n", err)
+	}
 }
 
 func main() {
@@ -181,12 +198,15 @@ func main() {
 				rconn, err := net.Dial("tcp", dst)
 				if err != nil {
 					log.Println("error connectiong to", dst, ":", err)
-					lconn.Close()
+					err := lconn.Close()
+					if err != nil {
+						log.Printf("error closing connection: %v\n", err)
+					}
 					return
 				}
 				tr := io.TeeReader(rconn, fin)
-				go func(rconn io.WriteCloser, tl io.Reader) { io.Copy(rconn, tl); rconn.Close() }(rconn, tl)
-				go func(lconn io.WriteCloser, tr io.Reader) { io.Copy(lconn, tr); lconn.Close() }(lconn, tr)
+				go copyStream(rconn, tl)
+				go copyStream(lconn, tr)
 			}(lconn)
 		}
 	}
@@ -212,5 +232,8 @@ func main() {
 		}
 	}
 
-	io.Copy(fout, fin)
+	_, err := io.Copy(fout, fin)
+	if err != nil {
+		log.Printf("error during copy: %v\n", err)
+	}
 }
